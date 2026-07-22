@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use SynTrustBench, cite the manuscript and the benchmark version."
+title: "SynTrustBench: A Trustworthiness Evidence Standard for Synthetic Clinical Data"
+type: software
+version: 0.1.0
+date-released: 2026-07-21
+authors:
+  - family-names: Hayder
+    given-names: Neeam Shahriar
+  - family-names: Wajahat
+    given-names: Iram
+  - family-names: Bukhari
+    given-names: Syed Ahmad Chan
+license: MIT

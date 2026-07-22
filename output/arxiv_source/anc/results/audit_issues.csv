@@ -1,0 +1,3 @@
+report_id,severity,field,message
+STB-019,human-review,ambiguity_flag,"Credibility flag: modality/dataset descriptions conflict, reader protocol is missing, code/data are absent. HIPAA/GDPR alignment is not a privacy test."
+STB-029,human-review,ambiguity_flag,Scope ambiguity: synthesizes annotations for real sentences rather than de novo patient notes. Old arXiv:2406.07021 is unrelated; retained in frozen pilot with explicit flag.

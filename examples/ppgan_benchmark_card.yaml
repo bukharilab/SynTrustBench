@@ -1,0 +1,115 @@
+benchmark:
+  name: SynTrustBench
+  version: 0.1.0
+  track: evidence-audit
+
+submission:
+  report_id: STB-023
+  citation: "Ashrafi et al. (2023), Protect and Extend -- Using GANs for Synthetic Data Generation of Time-Series Medical Records"
+  primary_source_url: "https://arxiv.org/abs/2402.14042"
+  artifact_url: "Not reported"
+  intended_use: "Generate dementia-care task sequences from the private PflegeTab dataset."
+  prohibited_uses:
+    - "Do not describe PPGAN as formally differentially private."
+    - "Do not release generated records without a threat model matched to the release setting."
+
+system:
+  name: PPGAN
+  version_or_commit: "Not reported"
+  architecture_family: GAN
+  generated_unit: "Daily time-series task sequences"
+  conditioning_information: "PflegeTab task and user-level temporal information"
+
+data:
+  dataset: PflegeTab
+  dataset_version: "81 users; 936 days; 193.72 hours; 33,377 completed tasks"
+  cohort_definition: "Dementia-care users represented in PflegeTab"
+  preprocessing_version: "Not reported as a versioned artifact"
+  split_hash: "Not reported"
+  governance_constraints: "Private care dataset; no public data-access path identified"
+
+evaluation:
+  code_commit: "Not reported"
+  environment: "TensorFlow Privacy is used for membership-inference evaluation; full environment not reported"
+  seeds: []
+  uncertainty_method: "Not reported"
+  missing_or_failed_runs: "Not reported"
+
+evidence:
+  fidelity:
+    maturity: 2
+    evidence_locator: "Primary report, fidelity/temporal evaluation tables and figures"
+    metrics: ["Autocorrelation", "sequence-length distributions", "means/SD heatmaps", "LSTM-based comparison"]
+    rare_pattern_analysis: "Not reported"
+    failure_flags: []
+  utility_and_validity:
+    maturity: 2
+    evidence_locator: "Primary report, downstream evaluation"
+    tasks: ["Real-plus-synthetic and synthetic-only task prediction"]
+    metrics: ["F1", "RMSE"]
+    real_held_out_test: "Unclear from the reported split description"
+    calibration: "Not reported"
+    clinical_review: "Not reported"
+    safety_failure: false
+    failure_flags: ["Held-out real-test status is unclear"]
+  privacy:
+    maturity: 2
+    evidence_locator: "Primary report, TensorFlow Privacy membership-inference experiment"
+    attacker_access: "Reported logistic-regression and threshold membership attacks"
+    auxiliary_knowledge: "Not fully specified"
+    target_population: "PflegeTab records"
+    member_nonmember_design: "The target data are effectively reused in the attack/shadow construction"
+    attack_training_and_calibration: "TensorFlow Privacy implementation; calibration details incomplete"
+    attacks: ["Membership inference"]
+    operating_points: ["Aggregate attack results; low-FPR operating point not reported"]
+    subgroup_or_rarity_results: "Not reported"
+    private_data_reaccess: "Not reported"
+    dp_claimed: false
+    formal_dp: false
+    dp_claim_status: "not a DP claim"
+    unit_of_privacy: "Not applicable"
+    adjacency_relation: "Not applicable"
+    mechanism: "Not applicable; DPGAN is a comparator"
+    clipping_norm: null
+    noise_multiplier: null
+    sampling_scheme: "Not applicable"
+    sample_rate: null
+    steps_or_epochs: "Not applicable"
+    epsilon: null
+    delta: null
+    accountant: "Not applicable"
+    accountant_version: "Not applicable"
+    implementation_version: "Not reported"
+    tuning_or_selection_privacy_cost: "Not applicable"
+    failure_flags: ["No end-to-end formal DP guarantee"]
+  equity:
+    maturity: 0
+    evidence_locator: "No qualifying subgroup evaluation found"
+    subgroup_definitions: []
+    subgroup_denominators: "Not reported"
+    metrics: []
+    uncertainty: "Not reported"
+    failure_flags: ["Equity not evaluated"]
+  robustness:
+    maturity: 0
+    evidence_locator: "No qualifying seed, shift, or stress-test analysis found"
+    stressors: []
+    external_or_temporal_validation: "Not reported"
+    metrics: []
+    failure_flags: ["Robustness not evaluated"]
+
+evaluability:
+  gate: Conditional
+  missing_fields: ["public code/commit", "public data-access route", "split hash", "seeds", "full environment"]
+  reproduction_notes: "The central experiments are interpretable, but the clinical evaluation cannot be independently reproduced from the released artifacts."
+
+limitations:
+  - "Evidence maturity describes reporting, not whether PPGAN outperforms another generator."
+  - "Human double-coding is pending."
+
+review:
+  primary_coder: "N.S.H. original extraction; Codex source check"
+  independent_coder: "Pending"
+  adjudicator: "Pending"
+  date: "2026-07-21"
+  unresolved_conflicts: []

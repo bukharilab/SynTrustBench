@@ -140,8 +140,6 @@ Complete the [benchmark card](benchmark_card.yaml), declare the intended use and
 - Independent human double-coding and inter-rater agreement remain pending; no Cohen's kappa or Gwet's AC1 is claimed.
 - Evidence maturity measures reporting strength, not whether the tested model performed well.
 
-See [`SUBMISSION_BLOCKERS.md`](SUBMISSION_BLOCKERS.md) for the human decisions still required before the first public preprint version.
-
 ## Roadmap
 
 | Track | Status | Deliverable |

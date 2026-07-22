@@ -6,4 +6,10 @@ The manuscript and artifact are technically complete enough for author review, b
 2. **Author and contribution approval.** All three named authors must approve the title, author order, affiliations, contribution statement, competing-interest statement, and automated-tools disclosure.
 3. **Funding statement.** The retained source manuscript did not establish funding status. Confirm the applicable funding or no-funding statement before upload; do not infer it.
 4. **Search-flow decision.** Approve the disclosed three-record discrepancy and frozen-pilot framing, or rerun the full database search before changing the corpus denominator. Do not present the reconstructed search syntax as the missing historical log.
-5. **Public-release choice.** The source package makes the data-availability statement true for arXiv. If a public GitHub/Zenodo release is desired for v0.1.0, create it, archive the exact release, and then insert the permanent URLs in the README, CITATION file, and manuscript.
+
+## Resolved release infrastructure
+
+- Public repository target: <https://github.com/neeamh/SynTrustBench-A-Trustworthiness-Evidence-Standard-for-Synthetic-Clinical-Data>
+- The repository URL is recorded in the README, `CITATION.cff`, and manuscript.
+- The release-candidate PDF and self-contained arXiv source ZIP are included under `output/`.
+- A Zenodo DOI remains optional and must not be claimed until an archive has been created.

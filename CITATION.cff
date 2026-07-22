@@ -4,6 +4,17 @@ title: "SynTrustBench: A Trustworthiness Evidence Standard for Synthetic Clinica
 type: software
 version: 0.1.0
 date-released: 2026-07-21
+repository-code: "https://github.com/neeamh/SynTrustBench-A-Trustworthiness-Evidence-Standard-for-Synthetic-Clinical-Data"
+url: "https://github.com/neeamh/SynTrustBench-A-Trustworthiness-Evidence-Standard-for-Synthetic-Clinical-Data"
+abstract: "An evidence-gated benchmark specification and source-level pilot audit for evaluating trustworthiness claims in synthetic clinical data research."
+keywords:
+  - synthetic clinical data
+  - trustworthiness
+  - benchmark
+  - differential privacy
+  - clinical utility
+  - fairness
+  - robustness
 authors:
   - family-names: Hayder
     given-names: Neeam Shahriar

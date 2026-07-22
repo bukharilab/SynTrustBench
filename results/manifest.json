@@ -1,6 +1,6 @@
 {
   "benchmark_version": "0.1.0",
-  "generated_at_utc": "2026-07-22T02:29:41.313723+00:00",
+  "generated_at_utc": "2026-07-22T02:54:02.385567+00:00",
   "corpus_n": 30,
   "input": "data/study_annotations.csv",
   "input_sha256": "b9dc667fb6909d90e95d526f7de73f4f1ff2baefa9c5aaa816a4c02d910bfbfe",
@@ -35,9 +35,9 @@
     "sensitivity_table.tex": "f27619bc2b3aa104363293bce0184918d0ab4a64544998a2bc49cdaeb0fa1585"
   },
   "figure_sha256": {
-    "evidence_heatmap.pdf": "2718247856704f3f2f7d0c90e947e6b1e2dfc1d8e926839e1d65e846361f8811",
+    "evidence_heatmap.pdf": "1d978369547231aaf0b8f2abb1c6ddc2877208c5239cd914534d58b583b5868e",
     "evidence_heatmap.png": "8c4095a5ccac271a3044e6fec88f26c8c9f1e245bd93a0d780647000c4781c89",
-    "maturity_by_modality.pdf": "30ca42c740e588cea65eb77b0c5aa80c932c25196c48c8feb23d7b217a68393b",
+    "maturity_by_modality.pdf": "ff206b2321f207c9fa714c42b617ab729aeeeedb9fa9e8207a76caf69aa2e93b",
     "maturity_by_modality.png": "070cd0242c8893c7f043c37fa209efc8f7a975681dca41c6776a1d431984c412"
   },
   "claim_boundary": "Evidence maturity only; no model-performance leaderboard"

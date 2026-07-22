@@ -1,7 +1,0 @@
-measure,full_count,full_denominator,full_percent,sensitivity_count,sensitivity_denominator,sensitivity_percent,exclusion
-Privacy evaluated,17,30,56.7,16,28,57.1,ambiguity_flag=Yes
-Formal DP documentation threshold met,2,30,6.7,2,28,7.1,ambiguity_flag=Yes
-Numeric epsilon reported,3,30,10.0,3,28,10.7,ambiguity_flag=Yes
-Fairness/subgroup evidence,2,30,6.7,2,28,7.1,ambiguity_flag=Yes
-Explicit robustness evaluation,12,30,40.0,11,28,39.3,ambiguity_flag=Yes
-MIMIC-III used,12,30,40.0,11,28,39.3,ambiguity_flag=Yes

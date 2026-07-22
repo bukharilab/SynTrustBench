@@ -1,5 +1,11 @@
+.DS_Store
 tmp/
+.venv/
+__pycache__/
 scripts/__pycache__/
+*.py[cod]
+output/build_logs/
+output/arxiv_source/
 *.aux
 *.bbl
 *.blg

@@ -1,12 +1,12 @@
 cff-version: 1.2.0
 message: "If you use SynTrustBench, cite the manuscript and the benchmark version."
-title: "SynTrustBench: A Trustworthiness Evidence Standard for Synthetic Clinical Data"
+title: "SynTrustBench: An Evidence-Gated and Executable Benchmark Framework for Synthetic Clinical Data"
 type: software
-version: 0.1.0
-date-released: 2026-07-21
-repository-code: "https://github.com/neeamh/SynTrustBench-A-Trustworthiness-Evidence-Standard-for-Synthetic-Clinical-Data"
-url: "https://github.com/neeamh/SynTrustBench-A-Trustworthiness-Evidence-Standard-for-Synthetic-Clinical-Data"
-abstract: "An evidence-gated benchmark specification and source-level pilot audit for evaluating trustworthiness claims in synthetic clinical data research."
+version: 0.2.0
+date-released: 2026-07-28
+repository-code: "https://github.com/bukharilab/SynTrustBench"
+url: "https://github.com/bukharilab/SynTrustBench"
+abstract: "An integrated framework for assessing published evidence and directly evaluating structured synthetic clinical data across fidelity, utility, privacy, equity, and robustness."
 keywords:
   - synthetic clinical data
   - trustworthiness

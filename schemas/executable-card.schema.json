@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://syntrustbench.org/schemas/executable-card-v1.json",
+  "title": "SynTrustBench executable benchmark card",
+  "type": "object",
+  "required": [
+    "benchmark",
+    "submission",
+    "results",
+    "privacy_threat_model",
+    "reproducibility",
+    "interpretation"
+  ],
+  "properties": {
+    "benchmark": {
+      "type": "object",
+      "required": ["name", "component", "protocol", "version", "status"]
+    },
+    "submission": {
+      "type": "object",
+      "required": [
+        "dataset",
+        "generator",
+        "rows",
+        "target",
+        "positive_label",
+        "protected_attributes"
+      ]
+    },
+    "results": {
+      "type": "object",
+      "required": ["benchmark_gate", "dimension_status", "unavailable_tests"]
+    },
+    "privacy_threat_model": {
+      "type": "object",
+      "required": [
+        "attacker_knowledge",
+        "attacker_access",
+        "attacker_goal",
+        "members",
+        "nonmembers",
+        "attack",
+        "interpretation"
+      ]
+    },
+    "reproducibility": {
+      "type": "object",
+      "required": [
+        "input_hashes",
+        "random_seed",
+        "bootstrap_iterations",
+        "confidence_level",
+        "downstream_model_seeds"
+      ]
+    },
+    "interpretation": {
+      "type": "object",
+      "required": [
+        "non_compensable",
+        "single_weighted_score",
+        "thresholds",
+        "certification"
+      ]
+    }
+  }
+}

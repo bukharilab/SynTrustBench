@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "syntrustbench"
+version = "0.2.0"
+description = "Evidence assessment and executable evaluation for synthetic clinical data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Neeam Hayder" },
+  { name = "Syed Ahmad Chan Bukhari" },
+]
+keywords = [
+  "synthetic data",
+  "clinical data",
+  "benchmark",
+  "privacy",
+  "fairness",
+  "healthcare",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+  "numpy>=1.24,<3",
+  "pandas>=2.0,<3",
+  "scipy>=1.10,<2",
+  "scikit-learn>=1.3,<2",
+  "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+evidence = [
+  "jsonschema>=4,<5",
+  "matplotlib>=3.10,<4",
+]
+dev = [
+  "build>=1.2",
+  "pytest>=8",
+  "ruff>=0.5",
+]
+docs = [
+  "reportlab>=4",
+]
+
+[project.scripts]
+syntrustbench = "syntrustbench.cli:main"
+
+[project.urls]
+Repository = "https://github.com/bukharilab/SynTrustBench"
+Documentation = "https://github.com/bukharilab/SynTrustBench/tree/main/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["syntrustbench*"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

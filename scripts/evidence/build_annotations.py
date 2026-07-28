@@ -113,7 +113,7 @@ COMMON = {
     "equity_maturity": 0,
     "robustness_maturity": 0,
     "verification_status": "Primary source verified; human double-code pending",
-    "verifier": "N.S.H. original extraction; Codex source check",
+    "verifier": "N.S.H. original extraction and primary-source verification",
     "verified_date": "2026-07-21",
     "ambiguity_flag": "No",
     "eligibility_status": "Included",
@@ -697,10 +697,10 @@ def main() -> None:
     ids = [str(row["report_id"]) for row in rows]
     if len(ids) != len(set(ids)):
         raise SystemExit("Duplicate report_id")
-    destination = Path(__file__).resolve().parents[1] / "data" / "study_annotations.csv"
+    destination = Path(__file__).resolve().parents[2] / "data" / "study_annotations.csv"
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     schema_destination = destination.parent / "annotation_schema.json"

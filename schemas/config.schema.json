@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://syntrustbench.org/schemas/config-v0.2.json",
+  "title": "SynTrustBench structured tabular configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dataset",
+    "columns",
+    "protected_attributes",
+    "clinical_constraints",
+    "utility_task",
+    "generator"
+  ],
+  "properties": {
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "modality", "outcome"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "modality": {"const": "tabular"},
+        "outcome": {"type": "string", "minLength": 1}
+      }
+    },
+    "columns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["continuous", "categorical", "binary"],
+      "properties": {
+        "continuous": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "categorical": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "binary": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      }
+    },
+    "protected_attributes": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "clinical_constraints": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "utility_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "target", "positive_label"],
+      "properties": {
+        "type": {"const": "binary_classification"},
+        "target": {"type": "string"},
+        "positive_label": {"type": ["string", "number", "boolean"]},
+        "features": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "exclude_features": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "seed": {"type": ["integer", "null"]}
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bootstrap_iterations": {"type": "integer", "minimum": 20},
+        "confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0.5,
+          "exclusiveMaximum": 1
+        },
+        "random_seed": {"type": "integer"}
+      }
+    },
+    "subgroup_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum_n": {"type": "integer", "minimum": 1},
+        "minimum_outcomes_per_class": {"type": "integer", "minimum": 1}
+      }
+    },
+    "robustness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "downstream_model_seeds": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "missingness_rates": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "training_size_fractions": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "shift": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "time_column": {"type": ["string", "null"]},
+        "site_column": {"type": ["string", "null"]}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exact_duplicate_decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "distance_max_rows": {
+          "type": "integer",
+          "minimum": 500,
+          "description": "Maximum rows per table used for nearest-neighbor exposure estimates."
+        },
+        "attack_max_rows": {
+          "type": "integer",
+          "minimum": 500,
+          "description": "Maximum member, nonmember, and released rows used in the distance attack."
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fidelity_wasserstein_conditional": {"type": "number"},
+        "fidelity_jsd_conditional": {"type": "number"},
+        "fidelity_association_conditional": {"type": "number"},
+        "fidelity_category_coverage_fail": {"type": "number"},
+        "fidelity_constraint_rate_fail": {"type": "number"},
+        "fidelity_missingness_gap_conditional": {"type": "number"},
+        "utility_retention_fail": {"type": "number"},
+        "utility_retention_conditional": {"type": "number"},
+        "privacy_duplicate_rate_fail": {"type": "number"},
+        "privacy_dcr_share_conditional": {"type": "number"},
+        "privacy_attack_auc_fail": {"type": "number"},
+        "privacy_attack_tpr_fail": {"type": "number"},
+        "equity_representation_gap_conditional": {"type": "number"},
+        "equity_max_gap_conditional": {"type": "number"},
+        "equity_worst_group_fail": {"type": "number"},
+        "robustness_model_seed_cv_conditional": {"type": "number"},
+        "robustness_generator_seed_cv_conditional": {"type": "number"},
+        "robustness_bootstrap_width_conditional": {"type": "number"},
+        "robustness_missingness_drop_conditional": {"type": "number"},
+        "robustness_training_size_spread_conditional": {"type": "number"},
+        "robustness_shift_gap_conditional": {"type": "number"}
+      }
+    }
+  }
+}

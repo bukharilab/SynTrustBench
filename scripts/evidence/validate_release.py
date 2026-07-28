@@ -11,7 +11,7 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def main() -> None:
@@ -52,11 +52,11 @@ def main() -> None:
                 )
 
     card_schema = json.loads(
-        (ROOT / "benchmark_card.schema.json").read_text(encoding="utf-8")
+        (ROOT / "schemas" / "evidence-card.schema.json").read_text(encoding="utf-8")
     )
     card_validator = Draft202012Validator(card_schema)
     for relative_path in [
-        Path("benchmark_card.yaml"),
+        Path("configs/evidence-card.yaml"),
         Path("examples/ppgan_benchmark_card.yaml"),
     ]:
         card = yaml.safe_load((ROOT / relative_path).read_text(encoding="utf-8"))

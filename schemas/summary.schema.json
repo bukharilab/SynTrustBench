@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://syntrustbench.org/schemas/summary-v1.json",
+  "title": "SynTrustBench executable summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark",
+    "component",
+    "protocol",
+    "version",
+    "timestamp_utc",
+    "dataset",
+    "generator",
+    "benchmark_gate",
+    "dimension_status",
+    "evaluation_coverage",
+    "failure_flags",
+    "warnings",
+    "dimensions",
+    "interpretation"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "benchmark": {"const": "SynTrustBench"},
+    "component": {"const": "Executable Evaluation"},
+    "protocol": {"const": "structured-tabular-clinical-data"},
+    "version": {"type": "string"},
+    "timestamp_utc": {"type": "string"},
+    "dataset": {"type": "string"},
+    "generator": {"type": "string"},
+    "benchmark_gate": {"enum": ["Pass", "Conditional", "Fail"]},
+    "dimension_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fidelity", "utility", "privacy", "equity", "robustness"],
+      "properties": {
+        "fidelity": {"enum": ["Pass", "Conditional", "Fail"]},
+        "utility": {"enum": ["Pass", "Conditional", "Fail"]},
+        "privacy": {"enum": ["Pass", "Conditional", "Fail"]},
+        "equity": {"enum": ["Pass", "Conditional", "Fail"]},
+        "robustness": {"enum": ["Pass", "Conditional", "Fail"]}
+      }
+    },
+    "evaluation_coverage": {"type": "object"},
+    "failure_flags": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "dimensions": {
+      "type": "object",
+      "required": ["fidelity", "utility", "privacy", "equity", "robustness"]
+    },
+    "interpretation": {
+      "type": "object",
+      "required": [
+        "provisional_thresholds",
+        "regulatory_certification",
+        "single_weighted_score"
+      ]
+    }
+  }
+}

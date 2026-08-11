@@ -147,5 +147,6 @@ outputs alone are not evidence that every failure is detected selectively.
 
 ## Citation and license
 
-Citation metadata are available in [CITATION.cff](CITATION.cff). Code and benchmark
-artifacts are released under the [MIT License](LICENSE).
+SynTrustBench: An Evidence-Gated and Executable Benchmark for Trustworthiness Claims in Synthetic Clinical Data
+Neeam Shahriar Hayder,  View ORCID ProfileSyed Ahmad Chan Bukhari
+doi: https://doi.org/10.64898/2026.08.05.26359803

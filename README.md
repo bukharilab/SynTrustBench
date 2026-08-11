@@ -148,5 +148,5 @@ outputs alone are not evidence that every failure is detected selectively.
 ## Citation and license
 
 SynTrustBench: An Evidence-Gated and Executable Benchmark for Trustworthiness Claims in Synthetic Clinical Data
-Neeam Shahriar Hayder,  View ORCID ProfileSyed Ahmad Chan Bukhari
+Neeam Shahriar Hayder, Syed Ahmad Chan Bukhari
 doi: https://doi.org/10.64898/2026.08.05.26359803

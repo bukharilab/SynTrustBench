@@ -9,6 +9,7 @@ from scipy.stats import ks_2samp, wasserstein_distance
 from .constraints import constraint_violations
 from .models import Submission
 from .stats import (
+    aggregate_status,
     association_matrix,
     categorical_values,
     metric,
@@ -295,17 +296,18 @@ def evaluate_fidelity(submission: Submission, rng: np.random.Generator) -> dict:
         note="Largest absolute real-versus-synthetic missingness-rate difference.",
     )
 
+    constraint_details: dict = {}
     violation_rate, per_rule, constraint_warnings = constraint_violations(
-        synthetic, config.clinical_constraints
+        synthetic, config.clinical_constraints, details=constraint_details
     )
     warnings.extend(constraint_warnings)
     if violation_rate is None:
         metrics["clinical_constraint_violation_rate"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
-            flag=True,
-            note="No valid clinical constraints were supplied.",
+            status="NotEvaluated",
+            flag=False,
+            note="No clinical constraint rows could be evaluated.",
         )
     else:
         constraint_flag = (
@@ -329,7 +331,8 @@ def evaluate_fidelity(submission: Submission, rng: np.random.Generator) -> dict:
             higher_is_worse=True,
             flag=constraint_flag,
             threshold=f"> {thresholds['fidelity_constraint_rate_fail']:.2f} -> Fail",
-            note=f"Share of rows violating one or more supplied constraints: {per_rule}",
+            note=("Maximum evaluable per-constraint violation rate; each rule uses its own "
+                  f"evaluated rows, excluding missing required values: {per_rule}"),
         )
 
     hard_fail = (
@@ -348,7 +351,17 @@ def evaluate_fidelity(submission: Submission, rng: np.random.Generator) -> dict:
             "maximum_missingness_rate_gap",
         )
     ) or metrics["clinical_constraint_violation_rate"]["status"] != "Available"
-    status = "Fail" if hard_fail else ("Conditional" if conditional else "Pass")
+    constraint_unavailable = violation_rate is None or any(
+        detail["status"] == "NotEvaluated" for detail in constraint_details.values()
+    )
+    metrics["clinical_constraint_violation_rate"]["required"] = True
+    if constraint_unavailable and not metrics["clinical_constraint_violation_rate"]["flag"]:
+        metrics["clinical_constraint_violation_rate"]["status"] = "NotEvaluated"
+    status = aggregate_status([
+        "Fail" if hard_fail else "Pass",
+        "NotEvaluated" if constraint_unavailable else "Pass",
+        "Conditional" if conditional else "Pass",
+    ])
 
     for name, value in metrics.items():
         if value["flag"] and value["status"] == "Available":
@@ -374,5 +387,6 @@ def evaluate_fidelity(submission: Submission, rng: np.random.Generator) -> dict:
             "per_column_out_of_range_rate": out_of_range_rates,
             "per_column_missingness_rate_gap": per_column_missingness_gap,
             "per_constraint_violation_rate": per_rule,
+            "clinical_constraints": constraint_details,
         },
     }

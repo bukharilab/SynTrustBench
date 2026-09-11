@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0
+
+- Changed overall and subgroup AUROC retention to chance-corrected retention, unavailable
+  when the corresponding TRTR lower confidence bound does not exceed chance. Added the
+  paired TSTR-minus-TRTR AUROC difference and CI-based Utility gating.
+- Applied the same chance-corrected retention to missingness conclusion reversal.
+- Added metric/dimension `NotEvaluated` semantics; unavailable required evidence prevents
+  an overall Pass but does not override a measured Fail.
+- Labeled Core Predictive-Utility Robustness and separated required checks from optional
+  generator-seed, temporal, and site checks.
+- Corrected privacy CI gating; TPR at 1% FPR is exploratory and not decision-driving.
+  Legacy threshold keys remain accepted without changing their values.
+- Made exact train/test row overlap fatal. Added optional `data.entity_id` validation,
+  requiring nonmissing identifiers in every real row and rejecting normalized cross-split overlap.
+- Changed clinical-constraint aggregation to the maximum evaluable per-rule violation rate;
+  missing required values are excluded independently for each rule.
+
 ## Unreleased
 
 - Integrated the evidence assessment and executable tabular protocol in one repository.

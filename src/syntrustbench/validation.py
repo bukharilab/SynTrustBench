@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -118,11 +119,15 @@ def _validate_splits(
     warnings: list[str] = []
     train_keys = set(_canonical_keys(real_train, config).tolist())
     test_keys = _canonical_keys(real_test, config)
-    overlap = float(test_keys.isin(train_keys).mean())
+    overlap = int(test_keys.isin(train_keys).sum())
     if overlap > 0:
+        raise ValueError(
+            f"Real train/test overlap detected: {overlap} overlapping held-out rows "
+            "exactly match training rows. Evaluation stopped."
+        )
+    if config.entity_id is None:
         warnings.append(
-            f"Real train/test overlap detected: {overlap:.2%} of held-out rows exactly "
-            "match training rows. Utility estimates may be optimistic."
+            "Only exact row overlap was checked; patient-level independence could not be verified."
         )
     for label, frame in (("real_train", real_train), ("real_test", real_test)):
         prevalence = float(frame[config.target].mean())
@@ -132,6 +137,20 @@ def _validate_splits(
                 "subgroup estimates may be unstable."
             )
     return warnings
+
+
+def _entity_keys(values: pd.Series) -> set:
+    """Compare stripped text and exact numeric equivalents without float rounding."""
+    keys = set()
+    for value in values:
+        text = str(value).strip()
+        try:
+            numeric = Decimal(text)
+        except InvalidOperation:
+            numeric = None
+        keys.add(("numeric", numeric) if numeric is not None and numeric.is_finite()
+                 else ("text", text))
+    return keys
 
 
 def load_submission(
@@ -152,6 +171,23 @@ def load_submission(
     raw_train, train_hash = _read_table(real_train)
     raw_test, test_hash = _read_table(real_test)
     raw_synthetic, synthetic_hash = _read_table(synthetic)
+
+    if benchmark_config.entity_id is not None:
+        entity_id = benchmark_config.entity_id
+        for label, frame in (("real_train", raw_train), ("real_test", raw_test)):
+            if entity_id not in frame.columns:
+                raise ValueError(f"{label} is missing entity identifier column {entity_id!r}.")
+            missing = int(frame[entity_id].isna().sum())
+            if missing:
+                raise ValueError(
+                    f"{label}.{entity_id}: {missing} missing entity identifiers. Evaluation stopped."
+                )
+        overlap = _entity_keys(raw_train[entity_id]) & _entity_keys(raw_test[entity_id])
+        if overlap:
+            raise ValueError(
+                f"Real train/test entity overlap detected: {len(overlap)} overlapping "
+                f"identifiers in {entity_id!r}. Evaluation stopped."
+            )
 
     train, warnings_train = _coerce_frame(raw_train, benchmark_config, "real_train")
     test, warnings_test = _coerce_frame(raw_test, benchmark_config, "real_test")

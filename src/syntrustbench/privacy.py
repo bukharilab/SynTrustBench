@@ -7,7 +7,7 @@ from sklearn.metrics import roc_curve
 from sklearn.neighbors import NearestNeighbors
 
 from .models import Submission
-from .stats import FeatureEncoder, metric, percentile_interval, safe_auroc
+from .stats import FeatureEncoder, aggregate_status, metric, percentile_interval, safe_auroc
 from .validation import canonical_row_keys
 
 
@@ -57,7 +57,7 @@ def evaluate_privacy(submission: Submission, rng: np.random.Generator) -> dict:
         iterations,
         confidence,
     )
-    duplicate_flag = duplicate_rate > thresholds["privacy_duplicate_rate_fail"]
+    duplicate_flag = bool(duplicate_mask.any())
     metrics["exact_training_duplicate_rate"] = metric(
         duplicate_rate,
         ci_low=duplicate_low,
@@ -65,7 +65,7 @@ def evaluate_privacy(submission: Submission, rng: np.random.Generator) -> dict:
         interval_type="synthetic-row bootstrap",
         higher_is_worse=True,
         flag=duplicate_flag,
-        threshold=f"> {thresholds['privacy_duplicate_rate_fail']:.3f} -> Fail",
+        threshold="Any exact training-record copy -> Fail",
         note=(
             "Share of synthetic rows matching a complete real-training row after "
             f"{config.exact_duplicate_decimals}-decimal canonicalization."
@@ -195,24 +195,36 @@ def evaluate_privacy(submission: Submission, rng: np.random.Generator) -> dict:
             len(attack_labels),
             rng,
             iterations,
-            confidence,
+            0.95,
         )
         attack_tpr = _tpr_at_fpr(attack_labels, attack_scores, 0.01)
         attack_flag = (
             attack_low is not None
             and attack_low > thresholds["privacy_attack_auc_fail"]
         )
-        attack_tpr_flag = attack_tpr > thresholds["privacy_attack_tpr_fail"]
+        if (
+            attack_low is None or attack_high is None
+            or not np.isfinite(attack_low) or not np.isfinite(attack_high)
+        ):
+            attack_status = "NotEvaluated"
+        elif attack_flag:
+            attack_status = "Fail"
+        elif attack_high <= thresholds["privacy_attack_auc_fail"]:
+            attack_status = "Pass"
+        else:
+            attack_status = "Conditional"
         metrics["distance_membership_attack_auc"] = metric(
             attack_auc,
             ci_low=attack_low,
             ci_high=attack_high,
-            interval_type="candidate-record bootstrap",
+            interval_type="candidate-record bootstrap (95%)",
             higher_is_worse=True,
             flag=attack_flag,
+            status=attack_status,
             threshold=(
-                f"lower confidence bound > "
-                f"{thresholds['privacy_attack_auc_fail']:.2f} -> Fail"
+                f"Provisional: lower 95% bound > {thresholds['privacy_attack_auc_fail']:.2f} -> Fail; "
+                f"upper 95% bound <= {thresholds['privacy_attack_auc_fail']:.2f} -> Pass; "
+                "otherwise Conditional"
             ),
             note=(
                 "Black-box distance attack: candidate closeness to released synthetic "
@@ -224,9 +236,10 @@ def evaluate_privacy(submission: Submission, rng: np.random.Generator) -> dict:
         metrics["distance_membership_attack_tpr_at_1pct_fpr"] = metric(
             attack_tpr,
             higher_is_worse=True,
-            flag=attack_tpr_flag,
-            threshold=f"> {thresholds['privacy_attack_tpr_fail']:.2f} -> Fail",
-            note="True-positive rate at a one-percent false-positive rate.",
+            note=(
+                "Exploratory TPR at 1% FPR; not decision-driving because sufficiently "
+                "reliable low-FPR uncertainty is not currently implemented."
+            ),
         )
     else:
         warnings.append(
@@ -236,31 +249,33 @@ def evaluate_privacy(submission: Submission, rng: np.random.Generator) -> dict:
         metrics["distance_membership_attack_auc"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             flag=False,
             note="Insufficient sample size for the configured attack.",
         )
         metrics["distance_membership_attack_tpr_at_1pct_fpr"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             flag=False,
-            note="Insufficient sample size for the configured attack.",
+            note=(
+                "Insufficient sample size for the configured attack. Exploratory TPR at 1% FPR; "
+                "not decision-driving because sufficiently reliable low-FPR uncertainty "
+                "is not currently implemented."
+            ),
         )
 
-    attack_failure = any(
-        metrics[name]["flag"]
-        for name in (
-            "distance_membership_attack_auc",
-            "distance_membership_attack_tpr_at_1pct_fpr",
-        )
+    metrics["exact_training_duplicate_rate"]["status"] = "Fail" if duplicate_flag else "Pass"
+    metrics["share_closer_than_real_real_floor"]["status"] = "Conditional" if floor_flag else "Pass"
+    required = (
+        "exact_training_duplicate_rate", "share_closer_than_real_real_floor",
+        "distance_membership_attack_auc",
     )
-    if duplicate_flag or attack_failure:
-        status = "Fail"
-    elif floor_flag or not attack_available:
-        status = "Conditional"
-    else:
-        status = "Pass"
+    for name in required:
+        metrics[name]["required"] = True
+    metrics["distance_membership_attack_tpr_at_1pct_fpr"]["required"] = False
+    attack_failure = metrics["distance_membership_attack_auc"]["status"] == "Fail"
+    status = aggregate_status(metrics[name]["status"] for name in required)
 
     if floor_flag:
         weaknesses.append(

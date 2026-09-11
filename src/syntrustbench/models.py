@@ -39,6 +39,7 @@ class BenchmarkConfig:
     exact_duplicate_decimals: int
     privacy_distance_max_rows: int
     privacy_attack_max_rows: int
+    entity_id: str | None = None
 
     @property
     def all_columns(self) -> list[str]:

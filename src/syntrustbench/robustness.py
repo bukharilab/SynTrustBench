@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .models import Submission
-from .stats import metric, safe_auroc, train_classifier
+from .stats import aggregate_status, metric, safe_auroc, train_classifier
 
 
 def _coefficient_of_variation(values: list[float]) -> float:
@@ -38,7 +38,7 @@ def evaluate_robustness(
     thresholds = config.thresholds
     internal = utility_result["_internal"]
     encoder = internal["encoder"]
-    baseline_retention = internal["retention"]
+    baseline_retention = internal["chance_corrected_retention"]
     trtr_auroc = utility_result["metrics"]["trtr_auroc"]["estimate"]
     baseline_tstr = utility_result["metrics"]["tstr_auroc"]["estimate"]
     metrics: dict[str, dict] = {}
@@ -105,7 +105,7 @@ def evaluate_robustness(
     )
 
     missingness_results: dict[str, dict[str, float]] = {}
-    maximum_rate = max(config.missingness_rates)
+    maximum_rate = max(config.missingness_rates, default=float("nan"))
     maximum_rate_aurocs: list[float] = []
     for rate_index, rate in enumerate(config.missingness_rates):
         rate_values: list[float] = []
@@ -134,11 +134,11 @@ def evaluate_robustness(
         if rate == maximum_rate:
             maximum_rate_aurocs = rate_values
     curves["missingness_tstr_auroc"] = missingness_results
-    maximum_rate_mean = float(np.mean(maximum_rate_aurocs))
+    maximum_rate_mean = float(np.mean(maximum_rate_aurocs)) if maximum_rate_aurocs else float("nan")
     missingness_drop = baseline_tstr - maximum_rate_mean
     perturbed_retention = (
-        maximum_rate_mean / trtr_auroc
-        if trtr_auroc is not None and trtr_auroc > 0
+        (maximum_rate_mean - 0.5) / (trtr_auroc - 0.5)
+        if internal["retention_evaluable"] and trtr_auroc is not None and trtr_auroc > 0.5
         else float("nan")
     )
     conclusion_reversal = (
@@ -153,8 +153,8 @@ def evaluate_robustness(
     )
     metrics["tstr_auroc_drop_at_maximum_missingness"] = metric(
         missingness_drop,
-        ci_low=min(maximum_rate_aurocs),
-        ci_high=max(maximum_rate_aurocs),
+        ci_low=min(maximum_rate_aurocs, default=None),
+        ci_high=max(maximum_rate_aurocs, default=None),
         interval_type="observed range across three perturbation seeds",
         higher_is_worse=True,
         flag=missingness_flag,
@@ -186,7 +186,8 @@ def evaluate_robustness(
         training_size_results[str(fraction)] = safe_auroc(labels, probabilities)
     curves["training_size_tstr_auroc"] = training_size_results
     training_size_spread = float(
-        max(training_size_results.values()) - min(training_size_results.values())
+        max(training_size_results.values(), default=float("nan"))
+        - min(training_size_results.values(), default=float("nan"))
     )
     training_size_flag = (
         training_size_spread
@@ -194,8 +195,8 @@ def evaluate_robustness(
     )
     metrics["training_size_auroc_spread"] = metric(
         training_size_spread,
-        ci_low=min(training_size_results.values()),
-        ci_high=max(training_size_results.values()),
+        ci_low=min(training_size_results.values(), default=None),
+        ci_high=max(training_size_results.values(), default=None),
         interval_type="observed range across configured training fractions",
         higher_is_worse=True,
         flag=training_size_flag,
@@ -245,7 +246,7 @@ def evaluate_robustness(
         metrics["generator_seed_tstr_auroc_cv"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             note=(
                 "Supply one or more --synthetic-replicate files generated under "
                 "different generator seeds to enable this test."
@@ -310,7 +311,7 @@ def evaluate_robustness(
             metrics["temporal_or_site_shift_auroc_gap"] = metric(
                 None,
                 higher_is_worse=True,
-                status="Not evaluated",
+                status="NotEvaluated",
                 note="Configured shift groups lacked sufficient evaluable held-out rows.",
             )
             warnings.append("Temporal/site shift was configured but could not be estimated.")
@@ -319,7 +320,7 @@ def evaluate_robustness(
         metrics["temporal_or_site_shift_auroc_gap"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             note="No shift.time_column or shift.site_column was configured.",
         )
 
@@ -331,19 +332,35 @@ def evaluate_robustness(
         if value["flag"] and name != "tstr_auroc_drop_at_maximum_missingness":
             weaknesses.append(f"{name} crossed its provisional stability threshold.")
 
-    required_flags = [
-        model_seed_flag,
-        bootstrap_flag,
-        missingness_flag,
-        training_size_flag,
-        generator_seed_flag,
-        shift_flag,
-    ]
-    status = "Fail" if conclusion_reversal else (
-        "Conditional" if any(required_flags) else "Pass"
+    required = {
+        "downstream_model_seed_auroc_cv": (
+            len(model_seed_aurocs) >= 2 and all(np.isfinite(list(model_seed_aurocs.values())))
+        ),
+        "tstr_bootstrap_relative_ci_width": True,
+        "tstr_auroc_drop_at_maximum_missingness": bool(maximum_rate_aurocs),
+        "training_size_auroc_spread": (
+            len(training_size_results) >= 2 and all(np.isfinite(list(training_size_results.values())))
+        ),
+    }
+    for name, value in metrics.items():
+        value["required"] = name in required
+        available = value["estimate"] is not None and np.isfinite(value["estimate"])
+        if not available or (name in required and not required[name]):
+            value["status"] = "NotEvaluated"
+            value["availability_label"] = (
+                "Not evaluated — required" if name in required else "Not evaluated — optional"
+            )
+        elif name == "tstr_auroc_drop_at_maximum_missingness" and conclusion_reversal:
+            value["status"] = "Fail"
+        else:
+            value["status"] = "Conditional" if value["flag"] else "Pass"
+    status = aggregate_status(
+        value["status"] for name, value in metrics.items()
+        if name in required or value["status"] != "NotEvaluated"
     )
     return {
         "dimension": "robustness",
+        "label": "Core Predictive-Utility Robustness",
         "status": status,
         "metrics": metrics,
         "failure_flags": [
@@ -353,9 +370,28 @@ def evaluate_robustness(
         "weaknesses": sorted(set(weaknesses)),
         "curves": curves,
         "details": {
-            "generator_seed_test_available": len(generator_seed_frames) >= 2,
+            "generator_seed_test_available": (
+                metrics["generator_seed_tstr_auroc_cv"]["status"] != "NotEvaluated"
+            ),
+            "optional_checks": {
+                "generator_seed_variation": metrics["generator_seed_tstr_auroc_cv"].get(
+                    "availability_label", metrics["generator_seed_tstr_auroc_cv"]["status"]
+                ),
+                "temporal_evaluation": (
+                    metrics["temporal_or_site_shift_auroc_gap"].get(
+                        "availability_label", metrics["temporal_or_site_shift_auroc_gap"]["status"]
+                    )
+                    if config.time_column else "Not evaluated — optional"
+                ),
+                "site_evaluation": (
+                    metrics["temporal_or_site_shift_auroc_gap"].get(
+                        "availability_label", metrics["temporal_or_site_shift_auroc_gap"]["status"]
+                    )
+                    if config.site_column and not config.time_column else "Not evaluated — optional"
+                ),
+            },
             "temporal_or_site_shift_available": (
-                metrics["temporal_or_site_shift_auroc_gap"]["status"] == "Available"
+                metrics["temporal_or_site_shift_auroc_gap"]["status"] != "NotEvaluated"
             ),
             "conclusion_reversal_under_missingness": conclusion_reversal,
         },

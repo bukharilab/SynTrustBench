@@ -28,7 +28,7 @@ def evaluate(
     synthetic_replicates: list[str | Path | pd.DataFrame] | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> BenchmarkResult:
-    """Run the complete v0.2 structured tabular protocol."""
+    """Run the complete v0.3 structured tabular protocol."""
 
     report_progress = progress or (lambda _message: None)
     report_progress("Loading and validating submission")

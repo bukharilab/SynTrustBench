@@ -14,6 +14,18 @@ from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_s
 MISSING_CATEGORY = "__MISSING__"
 
 
+def aggregate_status(statuses, *, overall: bool = False) -> str:
+    """Aggregate required evidence, preserving failures and unavailable evidence."""
+    statuses = set(statuses)
+    if "Fail" in statuses:
+        return "Fail"
+    if "NotEvaluated" in statuses:
+        return "Conditional" if overall else "NotEvaluated"
+    if "Conditional" in statuses:
+        return "Conditional"
+    return "Pass"
+
+
 def categorical_values(series: pd.Series) -> pd.Series:
     return series.astype("object").where(series.notna(), MISSING_CATEGORY).astype(str)
 

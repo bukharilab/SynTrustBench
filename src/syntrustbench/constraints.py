@@ -66,26 +66,40 @@ def evaluate_constraint(frame: pd.DataFrame, expression: str) -> np.ndarray:
 
 
 def constraint_violations(
-    frame: pd.DataFrame, constraints: list[str]
-) -> tuple[float | None, dict[str, float], list[str]]:
-    """Return overall violation rate, per-rule rates, and invalid-rule warnings."""
+    frame: pd.DataFrame, constraints: list[str], *, details: dict | None = None
+) -> tuple[float | None, dict[str, float | None], list[str]]:
+    """Return the maximum evaluable per-rule violation rate, rates, and warnings."""
 
     if not constraints:
         return None, {}, []
-    violated_any = np.zeros(len(frame), dtype=bool)
-    rates: dict[str, float] = {}
+    rates: dict[str, float | None] = {}
     warnings: list[str] = []
-    valid_count = 0
     for expression in constraints:
         try:
-            satisfied = evaluate_constraint(frame, expression)
+            tree = _validate_expression(expression, set(frame.columns))
+            required = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+            evaluated = frame[list(required)].notna().all(axis=1).to_numpy()
+            satisfied = evaluate_constraint(frame.iloc[np.flatnonzero(evaluated)], expression)
         except ValueError as exc:
             warnings.append(str(exc))
+            rates[expression] = None
+            if details is not None:
+                details[expression] = {
+                    "total_eligible_rows": len(frame), "evaluated_rows": 0,
+                    "excluded_missing_rows": None, "violating_rows": 0,
+                    "violation_rate": None, "status": "NotEvaluated", "note": str(exc),
+                }
             continue
-        valid_count += 1
-        violated = ~satisfied
-        rates[expression] = float(violated.mean())
-        violated_any |= violated
-    if valid_count == 0:
-        return None, rates, warnings
-    return float(violated_any.mean()), rates, warnings
+        violated = np.zeros(len(frame), dtype=bool)
+        violated[evaluated] = ~satisfied
+        count = int(evaluated.sum())
+        rates[expression] = float(violated.sum() / count) if count else None
+        if details is not None:
+            details[expression] = {
+                "total_eligible_rows": len(frame), "evaluated_rows": count,
+                "excluded_missing_rows": len(frame) - count,
+                "violating_rows": int(violated.sum()), "violation_rate": rates[expression],
+                "status": "Available" if count else "NotEvaluated",
+            }
+    finite_rates = [rate for rate in rates.values() if rate is not None and np.isfinite(rate)]
+    return max(finite_rates, default=None), rates, warnings

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "syntrustbench"
-version = "0.2.0"
+version = "0.3.0"
 description = "Evidence assessment and executable evaluation for synthetic clinical data"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -70,3 +70,6 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

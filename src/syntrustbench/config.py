@@ -56,7 +56,7 @@ def _as_string_list(value: Any, field_name: str) -> list[str]:
 
 
 def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
-    """Load the versioned v0.2 tabular configuration."""
+    """Load the versioned v0.3 tabular configuration."""
 
     raw = _load_raw(config)
     dataset = raw.get("dataset") or {}
@@ -68,6 +68,9 @@ def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
     robustness = raw.get("robustness") or {}
     subgroup = raw.get("subgroup_analysis") or {}
     privacy = raw.get("privacy") or {}
+    entity_id = (raw.get("data") or {}).get("entity_id")
+    if entity_id is not None and (not isinstance(entity_id, str) or not entity_id.strip()):
+        raise ValueError("data.entity_id must be a nonempty column name.")
 
     continuous = _as_string_list(columns.get("continuous"), "columns.continuous")
     categorical = _as_string_list(columns.get("categorical"), "columns.categorical")
@@ -77,7 +80,7 @@ def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
     if not target:
         raise ValueError("utility_task.target is required.")
     if dataset.get("modality", "tabular") != "tabular":
-        raise ValueError("SynTrustBench v0.2 implements structured tabular data only.")
+        raise ValueError("SynTrustBench v0.3 implements structured tabular data only.")
     if utility.get("type", "binary_classification") != "binary_classification":
         raise ValueError("The initial executable protocol supports binary classification only.")
 
@@ -88,7 +91,7 @@ def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
     if target not in declared:
         raise ValueError("utility_task.target must be declared in columns.binary.")
     if target not in binary:
-        raise ValueError("The v0.2 binary task target must be declared in columns.binary.")
+        raise ValueError("The v0.3 binary task target must be declared in columns.binary.")
 
     protected = _as_string_list(raw.get("protected_attributes"), "protected_attributes")
     undeclared_protected = sorted(set(protected) - set(declared))
@@ -98,7 +101,10 @@ def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
     excluded = _as_string_list(utility.get("exclude_features"), "utility_task.exclude_features")
     requested_features = utility.get("features")
     if requested_features is None:
-        features = [column for column in declared if column != target and column not in excluded]
+        features = [
+            column for column in declared
+            if column != target and column != entity_id and column not in excluded
+        ]
     else:
         features = _as_string_list(requested_features, "utility_task.features")
     invalid_features = sorted(set(features) - set(declared))
@@ -178,4 +184,5 @@ def load_config(config: str | Path | dict[str, Any]) -> BenchmarkConfig:
         exact_duplicate_decimals=int(privacy.get("exact_duplicate_decimals", 10)),
         privacy_distance_max_rows=privacy_distance_max_rows,
         privacy_attack_max_rows=privacy_attack_max_rows,
+        entity_id=entity_id,
     )

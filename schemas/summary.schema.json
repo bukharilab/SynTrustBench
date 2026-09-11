@@ -36,11 +36,11 @@
       "additionalProperties": false,
       "required": ["fidelity", "utility", "privacy", "equity", "robustness"],
       "properties": {
-        "fidelity": {"enum": ["Pass", "Conditional", "Fail"]},
-        "utility": {"enum": ["Pass", "Conditional", "Fail"]},
-        "privacy": {"enum": ["Pass", "Conditional", "Fail"]},
-        "equity": {"enum": ["Pass", "Conditional", "Fail"]},
-        "robustness": {"enum": ["Pass", "Conditional", "Fail"]}
+        "fidelity": {"enum": ["Pass", "Conditional", "Fail", "NotEvaluated"]},
+        "utility": {"enum": ["Pass", "Conditional", "Fail", "NotEvaluated"]},
+        "privacy": {"enum": ["Pass", "Conditional", "Fail", "NotEvaluated"]},
+        "equity": {"enum": ["Pass", "Conditional", "Fail", "NotEvaluated"]},
+        "robustness": {"enum": ["Pass", "Conditional", "Fail", "NotEvaluated"]}
       }
     },
     "evaluation_coverage": {"type": "object"},

@@ -18,6 +18,7 @@ import yaml
 
 from ._version import __version__
 from .models import Submission
+from .stats import aggregate_status
 
 
 DIMENSIONS = ["fidelity", "utility", "privacy", "equity", "robustness"]
@@ -45,11 +46,17 @@ def _clean(value: Any) -> Any:
 
 def benchmark_gate(dimensions: dict[str, dict]) -> str:
     statuses = [dimensions[name]["status"] for name in DIMENSIONS]
-    if "Fail" in statuses:
-        return "Fail"
-    if "Conditional" in statuses:
-        return "Conditional"
-    return "Pass"
+    return aggregate_status(statuses, overall=True)
+
+
+def _unavailable_required(dimensions: dict[str, dict]) -> list[str]:
+    return [
+        f"{dimension}.{name}"
+        for dimension in DIMENSIONS
+        for name, value in dimensions[dimension]["metrics"].items()
+        if value.get("status") in {"NotEvaluated", "Not evaluated"}
+        and value.get("required", True)
+    ]
 
 
 def _environment() -> dict[str, Any]:
@@ -116,7 +123,10 @@ def _coverage(dimensions: dict[str, dict]) -> dict[str, Any]:
     metric_total = 0
     for dimension in DIMENSIONS:
         values = list(dimensions[dimension]["metrics"].values())
-        available = sum(value.get("status") == "Available" for value in values)
+        available = sum(
+            value.get("status") in {"Available", "Pass", "Conditional", "Fail"}
+            for value in values
+        )
         by_dimension[dimension] = {"available": available, "total": len(values)}
         available_total += available
         metric_total += len(values)
@@ -138,7 +148,7 @@ def _benchmark_card(
         f"{dimension}.{name}"
         for dimension in DIMENSIONS
         for name, value in dimensions[dimension]["metrics"].items()
-        if value.get("status") != "Available"
+        if value.get("status") in {"NotEvaluated", "Not evaluated"}
     ]
     return {
         "benchmark": {
@@ -168,6 +178,7 @@ def _benchmark_card(
                 for dimension in DIMENSIONS
             },
             "unavailable_tests": unavailable,
+            "unavailable_required_evidence": _unavailable_required(dimensions),
         },
         "privacy_threat_model": dimensions["privacy"]["threat_model"],
         "reproducibility": {
@@ -224,7 +235,7 @@ def _render_report(
     ]
     headline = {
         "fidelity": ("association_matrix_error", "dependency error"),
-        "utility": ("auroc_utility_retention", "AUROC utility retention"),
+        "utility": ("auroc_utility_retention", "chance-corrected AUROC utility retention"),
         "privacy": ("exact_training_duplicate_rate", "training-copy rate"),
         "equity": ("worst_group_tstr_auroc", "worst-group TSTR AUROC"),
         "robustness": (
@@ -237,7 +248,7 @@ def _render_report(
         value = dimensions[dimension]["metrics"].get(metric_name, {})
         estimate = _format_value(value.get("estimate"))
         lines.append(
-            f"| {dimension.capitalize()} | **{dimensions[dimension]['status']}** "
+            f"| {dimensions[dimension].get('label', dimension.capitalize())} | **{dimensions[dimension]['status']}** "
             f"| {label}: {estimate} |"
         )
 
@@ -246,7 +257,7 @@ def _render_report(
         lines.extend(
             [
                 "",
-                f"## {dimension.capitalize()}: {result['status']}",
+                f"## {result.get('label', dimension.capitalize())}: {result['status']}",
                 "",
                 "| Metric | Estimate | Interval or range | Availability | Flag |",
                 "|---|---:|---|---|---|",
@@ -264,9 +275,27 @@ def _render_report(
                 interval = "-"
             lines.append(
                 f"| {name} | {_format_value(value.get('estimate'))} | {interval} | "
-                f"{value.get('status', 'Available')} | "
+                f"{value.get('availability_label', value.get('status', 'Available'))} | "
                 f"{'FLAG' if value.get('flag') else ''} |"
             )
+        lines.append("")
+        for name, value in result["metrics"].items():
+            if dimension in {"utility", "privacy"} and value.get("note"):
+                lines.append(f"- {name}: {value['note']}")
+            if dimension in {"utility", "privacy"} and value.get("threshold"):
+                lines.append(f"- {name} decision: {value['threshold']}")
+        if dimension == "fidelity":
+            for expression, detail in result.get("details", {}).get("clinical_constraints", {}).items():
+                lines.append(
+                    f"- Constraint `{expression}`: eligible={detail['total_eligible_rows']}; "
+                    f"evaluated={detail['evaluated_rows']}; "
+                    f"excluded missing={detail['excluded_missing_rows']}; "
+                    f"violating={detail['violating_rows']}; "
+                    f"violation rate={_format_value(detail['violation_rate'])}; {detail['status']}."
+                )
+        if dimension == "robustness":
+            for name, status in result.get("details", {}).get("optional_checks", {}).items():
+                lines.append(f"- {name}: {status}")
         if result.get("weaknesses"):
             lines.extend(
                 ["", "**Observed weaknesses**", ""]
@@ -291,6 +320,8 @@ def _render_report(
                 ]
             )
 
+    lines.extend(["", "## Unavailable required evidence", ""])
+    lines.extend([f"- {name}" for name in _unavailable_required(dimensions)] or ["- None."])
     lines.extend(["", "## Run warnings", ""])
     lines.extend([f"- {warning}" for warning in warnings] or ["- None."])
     lines.extend(

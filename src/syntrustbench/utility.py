@@ -91,7 +91,7 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
             function,
             rng,
             iterations,
-            confidence,
+            0.95 if name == "auroc" else confidence,
         )
         tstr_low, tstr_high = _paired_interval(
             tstr_point,
@@ -101,14 +101,14 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
             function,
             rng,
             iterations,
-            confidence,
+            0.95 if name == "auroc" else confidence,
         )
         higher_is_worse = name == "brier"
         metrics[f"trtr_{name}"] = metric(
             trtr_point,
             ci_low=trtr_low,
             ci_high=trtr_high,
-            interval_type="held-out real-test bootstrap",
+            interval_type="held-out real-test bootstrap" + (" (95%)" if name == "auroc" else ""),
             higher_is_worse=higher_is_worse,
             note=f"Train real, test held-out real: {name.upper()}.",
         )
@@ -116,17 +116,21 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
             tstr_point,
             ci_low=tstr_low,
             ci_high=tstr_high,
-            interval_type="held-out real-test bootstrap",
+            interval_type="held-out real-test bootstrap" + (" (95%)" if name == "auroc" else ""),
             higher_is_worse=higher_is_worse,
             note=f"Train synthetic, test held-out real: {name.upper()}.",
         )
 
     trtr_auroc = trtr_values["auroc"]
     tstr_auroc = tstr_values["auroc"]
+    trtr_low = metrics["trtr_auroc"]["ci_low"]
+    retention_evaluable = (
+        trtr_low is not None and np.isfinite(trtr_low) and trtr_low > 0.5
+        and np.isfinite(trtr_auroc) and trtr_auroc > 0.5
+    )
     retention = (
-        tstr_auroc / trtr_auroc
-        if np.isfinite(trtr_auroc) and trtr_auroc > 0
-        else float("nan")
+        (tstr_auroc - 0.5) / (trtr_auroc - 0.5)
+        if retention_evaluable else float("nan")
     )
 
     def retention_statistic(
@@ -135,38 +139,44 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
         real_score = safe_auroc(labels, trtr)
         synthetic_score = safe_auroc(labels, tstr)
         return (
-            synthetic_score / real_score
-            if np.isfinite(real_score) and real_score > 0
+            (synthetic_score - 0.5) / (real_score - 0.5)
+            if np.isfinite(real_score) and real_score > 0.5
             else float("nan")
         )
 
-    retention_low, retention_high = _paired_interval(
-        retention,
-        y_true,
-        trtr_probability,
-        tstr_probability,
-        retention_statistic,
-        rng,
-        iterations,
-        confidence,
-    )
+    retention_low, retention_high = (None, None)
+    if retention_evaluable:
+        retention_low, retention_high = _paired_interval(
+            retention, y_true, trtr_probability, tstr_probability,
+            retention_statistic, rng, iterations, 0.95,
+        )
     thresholds = config.thresholds
-    retention_flag = (
-        not np.isfinite(retention)
-        or retention < thresholds["utility_retention_conditional"]
-    )
     metrics["auroc_utility_retention"] = metric(
-        retention,
+        retention if retention_evaluable else None,
         ci_low=retention_low,
         ci_high=retention_high,
-        interval_type="paired held-out real-test bootstrap",
+        interval_type="paired held-out real-test bootstrap (95%)",
         higher_is_worse=False,
-        flag=retention_flag,
         threshold=(
-            f"< {thresholds['utility_retention_fail']:.2f} -> Fail; "
-            f"< {thresholds['utility_retention_conditional']:.2f} -> Conditional"
+            f"Provisional: upper 95% bound < {thresholds['utility_retention_fail']:.2f} -> Fail; "
+            f"lower 95% bound >= {thresholds['utility_retention_conditional']:.2f} -> Pass"
         ),
-        note="TSTR AUROC divided by TRTR AUROC on the same held-out real rows.",
+        note=(
+            "Chance-corrected retention: (TSTR AUROC - 0.5) / (TRTR AUROC - 0.5). "
+            "NotEvaluated unless the TRTR AUROC lower 95% bound exceeds 0.50."
+        ),
+    )
+    difference = tstr_auroc - trtr_auroc
+    difference_low, difference_high = _paired_interval(
+        difference, y_true, trtr_probability, tstr_probability,
+        lambda labels, trtr, tstr: safe_auroc(labels, tstr) - safe_auroc(labels, trtr),
+        rng, iterations, 0.95,
+    )
+    metrics["tstr_minus_trtr_auroc"] = metric(
+        difference, ci_low=difference_low, ci_high=difference_high,
+        interval_type="paired held-out real-test bootstrap (95%)",
+        higher_is_worse=False,
+        note="Paired AUROC difference: TSTR minus TRTR on the same held-out real rows.",
     )
 
     trtr_auprc = trtr_values["auprc"]
@@ -189,26 +199,26 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
     metrics["tstr_auroc"]["flag"] = tstr_below_chance
     metrics["tstr_auroc"]["threshold"] = "upper confidence bound <= 0.50 -> Fail"
 
-    if not np.isfinite(retention) or tstr_below_chance:
-        status = "Fail"
-    elif (
-        retention < thresholds["utility_retention_fail"]
-        or (
-            retention_high is not None
-            and retention_high < thresholds["utility_retention_fail"]
-        )
+    if not retention_evaluable:
+        status = "NotEvaluated"
+    elif tstr_below_chance or (
+        retention_high is not None
+        and retention_high < thresholds["utility_retention_fail"]
     ):
         status = "Fail"
     elif (
-        retention < thresholds["utility_retention_conditional"]
-        or (
-            retention_low is not None
-            and retention_low < thresholds["utility_retention_conditional"]
-        )
+        retention_low is None or retention_high is None
+        or not np.isfinite(retention_low) or not np.isfinite(retention_high)
+        or metrics["tstr_auroc"]["ci_high"] is None
     ):
-        status = "Conditional"
-    else:
+        status = "NotEvaluated"
+    elif retention_low >= thresholds["utility_retention_conditional"]:
         status = "Pass"
+    else:
+        status = "Conditional"
+    metrics["auroc_utility_retention"]["status"] = status
+    metrics["auroc_utility_retention"]["required"] = True
+    metrics["auroc_utility_retention"]["flag"] = status in {"Fail", "Conditional"}
 
     weaknesses: list[str] = []
     if status != "Pass":
@@ -230,6 +240,7 @@ def evaluate_utility(submission: Submission, rng: np.random.Generator) -> dict:
             "y_true": y_true,
             "trtr_probability": trtr_probability,
             "tstr_probability": tstr_probability,
-            "retention": retention,
+            "chance_corrected_retention": retention,
+            "retention_evaluable": retention_evaluable,
         },
     }

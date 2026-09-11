@@ -44,25 +44,25 @@ def evaluate_equity(
         metrics["maximum_representation_gap"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             note="No protected or clinically relevant subgroup attributes were configured.",
         )
         metrics["worst_group_tstr_auroc"] = metric(
             None,
             higher_is_worse=False,
-            status="Not evaluated",
+            status="NotEvaluated",
             note="No subgroup attributes were configured.",
         )
         metrics["maximum_within_attribute_utility_gap"] = metric(
             None,
             higher_is_worse=True,
-            status="Not evaluated",
+            status="NotEvaluated",
             note="No subgroup attributes were configured.",
         )
         warnings.append("Equity was not evaluated because protected_attributes is empty.")
         return {
             "dimension": "equity",
-            "status": "Conditional",
+            "status": "NotEvaluated",
             "metrics": metrics,
             "failure_flags": [],
             "warnings": warnings,
@@ -144,6 +144,7 @@ def evaluate_equity(
                         "utility_retention": None,
                         "utility_retention_ci_low": None,
                         "utility_retention_ci_high": None,
+                        "utility_retention_status": "NotEvaluated",
                         "status": "Insufficient evidence",
                     }
                 )
@@ -165,29 +166,34 @@ def evaluate_equity(
                     config.bootstrap_iterations,
                     config.confidence_level,
                 )
+                retention_evaluable = (
+                    trtr_low is not None and np.isfinite(trtr_low) and trtr_low > 0.5
+                    and np.isfinite(trtr_point) and trtr_point > 0.5
+                )
                 retention = (
-                    tstr_point / trtr_point
-                    if np.isfinite(trtr_point) and trtr_point > 0
-                    else float("nan")
+                    (tstr_point - 0.5) / (trtr_point - 0.5)
+                    if retention_evaluable else None
                 )
 
                 def retention_statistic(rows: np.ndarray) -> float:
                     real_score = safe_auroc(labels[rows], trtr[rows])
                     synthetic_score = safe_auroc(labels[rows], tstr[rows])
                     return (
-                        synthetic_score / real_score
-                        if np.isfinite(real_score) and real_score > 0
+                        (synthetic_score - 0.5) / (real_score - 0.5)
+                        if np.isfinite(real_score) and real_score > 0.5
                         else float("nan")
                     )
 
-                retention_low, retention_high = percentile_interval(
-                    retention,
-                    retention_statistic,
-                    len(labels),
-                    rng,
-                    config.bootstrap_iterations,
-                    config.confidence_level,
-                )
+                retention_low, retention_high = None, None
+                if retention_evaluable:
+                    retention_low, retention_high = percentile_interval(
+                        retention,
+                        retention_statistic,
+                        len(labels),
+                        rng,
+                        config.bootstrap_iterations,
+                        config.confidence_level,
+                    )
                 row.update(
                     {
                         "trtr_auroc": trtr_point,
@@ -199,6 +205,7 @@ def evaluate_equity(
                         "utility_retention": retention,
                         "utility_retention_ci_low": retention_low,
                         "utility_retention_ci_high": retention_high,
+                        "utility_retention_status": "Available" if retention_evaluable else "NotEvaluated",
                         "status": "Evaluable",
                     }
                 )
@@ -254,7 +261,7 @@ def evaluate_equity(
         metrics["worst_group_tstr_auroc"] = metric(
             None,
             higher_is_worse=False,
-            status="Not evaluated",
+            status="NotEvaluated",
             note="No subgroup met the minimum sample and outcome-count requirements.",
         )
 
@@ -272,6 +279,7 @@ def evaluate_equity(
         maximum_utility_gap if np.isfinite(maximum_utility_gap) else None,
         higher_is_worse=True,
         flag=utility_gap_flag,
+        status="Available" if np.isfinite(maximum_utility_gap) else "NotEvaluated",
         threshold=f"> {thresholds['equity_max_gap_conditional']:.2f} -> Conditional",
         note=(
             "Largest best-minus-worst TSTR AUROC gap calculated within the same "
@@ -297,6 +305,8 @@ def evaluate_equity(
 
     if worst_flag:
         status = "Fail"
+    elif any(value["status"] == "NotEvaluated" for value in metrics.values()):
+        status = "NotEvaluated"
     elif representation_flag or utility_gap_flag or worst_uncertain or not all_evaluable:
         status = "Conditional"
     else:

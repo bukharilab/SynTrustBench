@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://syntrustbench.org/schemas/config-v0.2.json",
+  "$id": "https://syntrustbench.org/schemas/config-v0.3.json",
   "title": "SynTrustBench structured tabular configuration",
   "type": "object",
   "additionalProperties": false,
@@ -13,6 +13,13 @@
     "generator"
   ],
   "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
     "dataset": {
       "type": "object",
       "additionalProperties": false,
